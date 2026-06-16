@@ -10,9 +10,10 @@ export function GameActions({ gameId, editHref }: { gameId: string; editHref: st
   const [error, setError] = useState<string | null>(null);
 
   function onDelete() {
-    if (!window.confirm("Delete this game? Everyone's stats will recalculate.")) return;
+    const pin = window.prompt("Delete this game? Enter the admin PIN to confirm — everyone's stats will recalculate.");
+    if (pin === null) return;
     startTransition(async () => {
-      const res = await deleteGame(gameId);
+      const res = await deleteGame(gameId, pin);
       if (res && !res.ok) setError(res.error);
       else setOpen(false);
     });

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { verifyAdminPin } from "@/lib/admin";
 import { gameInputSchema, type GameInput } from "@/lib/schemas";
 import type { Game } from "@/lib/types";
 
@@ -88,7 +89,8 @@ export async function saveGame(raw: GameInput): Promise<ActionResult> {
   redirect(`/sessions/${input.playedOn}`);
 }
 
-export async function updateGame(gameId: string, raw: GameInput): Promise<ActionResult> {
+export async function updateGame(gameId: string, raw: GameInput, pin: string): Promise<ActionResult> {
+  if (!verifyAdminPin(pin)) return { ok: false, error: "Incorrect admin PIN." };
   const parsed = gameInputSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the game details" };
@@ -132,7 +134,8 @@ export async function updateGame(gameId: string, raw: GameInput): Promise<Action
   redirect(`/sessions/${input.playedOn}`);
 }
 
-export async function deleteGame(gameId: string, editorName?: string): Promise<ActionResult> {
+export async function deleteGame(gameId: string, pin: string, editorName?: string): Promise<ActionResult> {
+  if (!verifyAdminPin(pin)) return { ok: false, error: "Incorrect admin PIN." };
   try {
     const supabase = await createSupabaseServerClient();
 
