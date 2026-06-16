@@ -1,4 +1,4 @@
-# 🏸 Smash Tracker
+# 🏸 Badminton Tracker
 
 A self-hostable scoreboard and stats tracker for a small group that plays **2v2 rotating-partner badminton** (four play, one sits out each game). Log a day's games on your phone, fix mistakes any time, and settle who's actually best — with a fair skill rating, head-to-head and partner-chemistry breakdowns, badges, and trends.
 

@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Smash Tracker",
-    short_name: "Smash",
+    name: "Badminton Tracker",
+    short_name: "Badminton",
     description: "Scores, ratings and stats for our 2v2 badminton sessions.",
     start_url: "/",
     display: "standalone",

@@ -11,7 +11,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         </div>
         <h1 className="mt-3 font-display text-2xl font-bold">Connect your database</h1>
         <p className="mt-2 text-sm text-muted">
-          Smash Tracker needs a free Supabase project to store games. Add your project URL and anon key to{" "}
+          Badminton Tracker needs a free Supabase project to store games. Add your project URL and anon key to{" "}
           <code className="tnum rounded bg-court-soft px-1.5 py-0.5 text-court">.env.local</code>, then reload.
         </p>
         <div className="mt-5 rounded-xl border border-line bg-surface p-4 text-left text-sm">

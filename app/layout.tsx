@@ -12,10 +12,10 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Smash Tracker",
+  title: "Badminton Tracker",
   description: "Scores, ratings and stats for our 2v2 badminton sessions.",
-  applicationName: "Smash Tracker",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Smash Tracker" },
+  applicationName: "Badminton Tracker",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Badminton Tracker" },
 };
 
 export const viewport: Viewport = {
@@ -35,7 +35,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <div className="mx-auto flex h-full w-full max-w-2xl items-center gap-2 px-4 sm:px-6">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icon.svg" alt="" width={24} height={24} className="shrink-0" />
-            <span className="font-display text-base font-semibold tracking-tight">Smash Tracker</span>
+            <span className="font-display text-base font-semibold tracking-tight">Badminton Tracker</span>
           </div>
         </header>
         <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col">
