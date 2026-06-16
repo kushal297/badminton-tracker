@@ -10,6 +10,7 @@ export function GameActions({ gameId, editHref }: { gameId: string; editHref: st
   const [error, setError] = useState<string | null>(null);
 
   function onDelete() {
+    setError(null);
     const pin = window.prompt("Delete this game? Enter the admin PIN to confirm — everyone's stats will recalculate.");
     if (pin === null) return;
     startTransition(async () => {

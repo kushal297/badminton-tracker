@@ -62,6 +62,7 @@ export function GameEntryForm({
 
   function submit() {
     if (!ready || pending) return;
+    setError(null);
     const input: GameInput = {
       playedOn,
       teamA: [slots[0]!, slots[1]!],
