@@ -30,17 +30,17 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
-      <body className="min-h-full">
-        <header className="sticky top-0 z-40 h-12 border-b border-line bg-court-deep text-paper backdrop-blur">
+      <body className="flex h-dvh flex-col overflow-hidden">
+        <header className="z-40 h-12 shrink-0 border-b border-line bg-court-deep text-paper">
           <div className="mx-auto flex h-full w-full max-w-2xl items-center gap-2 px-4 sm:px-6">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icon.svg" alt="" width={24} height={24} className="shrink-0" />
             <span className="font-display text-base font-semibold tracking-tight">Badminton Tracker</span>
           </div>
         </header>
-        <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col">
-          <main className="flex-1 px-4 pb-28 pt-4 sm:px-6">{children}</main>
-        </div>
+        <main className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="mx-auto w-full max-w-2xl px-4 pb-6 pt-4 sm:px-6">{children}</div>
+        </main>
         <TabBar />
       </body>
     </html>

@@ -35,7 +35,7 @@ const TABS: Tab[] = [
 export function TabBar() {
   const pathname = usePathname() ?? "/";
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur">
+    <nav className="z-40 shrink-0 border-t border-line bg-surface/95 backdrop-blur">
       <ul className="mx-auto flex w-full max-w-2xl items-stretch justify-between px-2 pb-[env(safe-area-inset-bottom)]">
         {TABS.map((tab) => {
           const active = tab.match(pathname);

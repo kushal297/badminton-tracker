@@ -64,7 +64,7 @@ export function PlayersManager({ initial }: { initial: Row[] }) {
       <ul className="space-y-2">
         {active.map((p) => (
           <li key={p.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2.5">
-            <PhotoUploader playerId={p.id} currentUrl={p.photo_url} />
+            <PhotoUploader player={p} />
             {editingId === p.id ? (
               <input
                 autoFocus
