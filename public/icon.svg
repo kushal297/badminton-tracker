@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#07382A"/>
+  <!-- feather skirt -->
+  <path d="M256 120 L150 372 H362 Z" fill="#F4F6F2"/>
+  <path d="M256 120 L256 372" stroke="#DCE5DF" stroke-width="6"/>
+  <path d="M256 120 L196 372" stroke="#DCE5DF" stroke-width="6"/>
+  <path d="M256 120 L316 372" stroke="#DCE5DF" stroke-width="6"/>
+  <path d="M205 250 H307" stroke="#DCE5DF" stroke-width="6"/>
+  <path d="M178 312 H334" stroke="#DCE5DF" stroke-width="6"/>
+  <!-- cork base -->
+  <circle cx="256" cy="392" r="56" fill="#FF5C39"/>
+  <circle cx="256" cy="392" r="56" stroke="#07382A" stroke-width="10"/>
+</svg>
