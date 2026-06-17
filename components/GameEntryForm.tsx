@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { btnPrimary } from "@/components/ui";
-import { saveGame, updateGame, type ActionResult } from "@/app/actions/games";
+import { deleteGame, saveGame, updateGame, type ActionResult } from "@/app/actions/games";
 import type { GameInput } from "@/lib/schemas";
 
 type MiniPlayer = { id: string; name: string; color: string | null; photo_url: string | null };
@@ -38,6 +39,7 @@ export function GameEntryForm({
   const [target, setTarget] = useState(initial?.gameTarget ?? 21);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
   const assigned = slots.filter((s): s is string => Boolean(s));
@@ -85,6 +87,18 @@ export function GameEntryForm({
         if (res && !res.ok) setError(res.error);
       });
     }
+  }
+
+  function onDelete() {
+    if (mode !== "edit" || !gameId || pending) return;
+    setError(null);
+    const pin = window.prompt("Delete this game? Enter the admin PIN to confirm — everyone's stats will recalculate.");
+    if (pin === null) return; // cancelled = silent no-op
+    startTransition(async () => {
+      const res = await deleteGame(gameId, pin);
+      if (!res.ok) setError(res.error);
+      else router.push(`/sessions/${initial?.playedOn ?? playedOn}`);
+    });
   }
 
   const winnerText = !ready
@@ -198,6 +212,16 @@ export function GameEntryForm({
         <button type="button" onClick={submit} disabled={!ready || pending} className={`${btnPrimary} w-full`}>
           {pending ? "Saving…" : mode === "edit" ? "Save changes" : "Save game"}
         </button>
+        {mode === "edit" && gameId ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={pending}
+            className="mt-3 w-full py-1 text-center text-sm font-medium text-loss transition hover:text-loss/75 disabled:opacity-60"
+          >
+            Delete game
+          </button>
+        ) : null}
       </div>
     </div>
   );
