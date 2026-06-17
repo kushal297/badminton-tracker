@@ -62,6 +62,7 @@ export function GameEntryForm({
 
   function submit() {
     if (!ready || pending) return;
+    setError(null);
     const input: GameInput = {
       playedOn,
       teamA: [slots[0]!, slots[1]!],
@@ -71,11 +72,19 @@ export function GameEntryForm({
       scoreB,
       gameTarget: target,
     };
-    startTransition(async () => {
-      const res: ActionResult | void =
-        mode === "edit" && gameId ? await updateGame(gameId, input) : await saveGame(input);
-      if (res && !res.ok) setError(res.error);
-    });
+    if (mode === "edit" && gameId) {
+      const pin = window.prompt("Enter the admin PIN to save these changes");
+      if (pin === null) return; // cancelled = silent no-op
+      startTransition(async () => {
+        const res: ActionResult | void = await updateGame(gameId, input, pin);
+        if (res && !res.ok) setError(res.error);
+      });
+    } else {
+      startTransition(async () => {
+        const res: ActionResult | void = await saveGame(input);
+        if (res && !res.ok) setError(res.error);
+      });
+    }
   }
 
   const winnerText = !ready
