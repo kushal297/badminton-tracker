@@ -39,6 +39,7 @@ export function GameEntryForm({
   const [target, setTarget] = useState(initial?.gameTarget ?? 21);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [busyAction, setBusyAction] = useState<"save" | "delete" | null>(null);
   const router = useRouter();
 
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
@@ -65,6 +66,7 @@ export function GameEntryForm({
   function submit() {
     if (!ready || pending) return;
     setError(null);
+    setBusyAction("save");
     const input: GameInput = {
       playedOn,
       teamA: [slots[0]!, slots[1]!],
@@ -94,9 +96,11 @@ export function GameEntryForm({
     setError(null);
     const pin = window.prompt("Delete this game? Enter the admin PIN to confirm — everyone's stats will recalculate.");
     if (pin === null) return; // cancelled = silent no-op
+    setBusyAction("delete");
     startTransition(async () => {
       const res = await deleteGame(gameId, pin);
       if (!res.ok) setError(res.error);
+      // Navigate to the game's stored day, not the editable date field — delete ignores date edits.
       else router.push(`/sessions/${initial?.playedOn ?? playedOn}`);
     });
   }
@@ -210,7 +214,7 @@ export function GameEntryForm({
           <p className="mb-3 rounded-lg bg-shuttle-soft px-3 py-2 text-center text-sm text-loss">{error}</p>
         ) : null}
         <button type="button" onClick={submit} disabled={!ready || pending} className={`${btnPrimary} w-full`}>
-          {pending ? "Saving…" : mode === "edit" ? "Save changes" : "Save game"}
+          {pending && busyAction === "save" ? "Saving…" : mode === "edit" ? "Save changes" : "Save game"}
         </button>
         {mode === "edit" && gameId ? (
           <button
@@ -219,7 +223,7 @@ export function GameEntryForm({
             disabled={pending}
             className="mt-3 w-full py-1 text-center text-sm font-medium text-loss transition hover:text-loss/75 disabled:opacity-60"
           >
-            Delete game
+            {pending && busyAction === "delete" ? "Deleting…" : "Delete game"}
           </button>
         ) : null}
       </div>
