@@ -5,3 +5,8 @@
 export function isUniqueViolation(err: unknown): boolean {
   return typeof err === "object" && err !== null && (err as { code?: unknown }).code === "23505";
 }
+
+/** True for PostgREST PGRST116: a .single() query matched no row. */
+export function isNoRows(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { code?: unknown }).code === "PGRST116";
+}
