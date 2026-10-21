@@ -17,7 +17,7 @@ function absence(playerId: string, day: string): Absence {
   return { id: `abs-${seq++}`, player_id: playerId, noshow_on: day, note: null, created_at: "2026-02-01T00:00:00Z" };
 }
 function clear(playerId: string, beers: number): BeerClear {
-  return { id: `clr-${seq++}`, player_id: playerId, beers, cleared_at: "2026-02-01T00:00:00Z" };
+  return { id: `clr-${seq++}`, player_id: playerId, beers, cleared_at: "2026-02-01T00:00:00Z", earned_total: null };
 }
 
 const RATE = 6;
