@@ -9,11 +9,17 @@ const DEFAULT_BEERS_PER_NO_SHOW = 6;
 
 type ServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
-/** Shared by getPlayers and getAllData so the players order and paging cannot drift. */
-function fetchPlayers(supabase: ServerClient): Promise<Player[]> {
-  return fetchAllRows<Player>((from, to) =>
+/**
+ * Shared by getPlayers and getAllData so the players order, paging and colour
+ * assignment cannot drift. Unsaved colours are filled once here so avatars,
+ * chips and charts all agree.
+ */
+async function fetchPlayers(supabase: ServerClient): Promise<Player[]> {
+  const players = await fetchAllRows<Player>((from, to) =>
     supabase.from("players").select("*").order("created_at", { ascending: true }).order("id", { ascending: true }).range(from, to),
   );
+  const assigned = assignPlayerColors(players);
+  return players.map((p) => ({ ...p, color: assigned.get(p.id) ?? p.color }));
 }
 
 /** Players only, for pages that need nothing else (same order and paging as getAllData). */
@@ -89,9 +95,5 @@ export async function getAllData(): Promise<AllData> {
     played_on: playedOnBySession.get(g.session_id) ?? g.played_at.slice(0, 10),
   }));
 
-  // Fill unsaved colours once, here, so avatars, chips and charts all agree.
-  const assigned = assignPlayerColors(players);
-  const coloredPlayers = players.map((p) => ({ ...p, color: assigned.get(p.id) ?? p.color }));
-
-  return { players: coloredPlayers, sessions, games, absences, beerClears, beersPerNoShow };
+  return { players, sessions, games, absences, beerClears, beersPerNoShow };
 }
