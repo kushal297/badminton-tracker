@@ -6,6 +6,24 @@ import type { Absence, BeerClear, Game, GameWithDate, Player, Session } from "@/
 /** Default beers owed per no-show when app_settings is missing or unreadable. */
 const DEFAULT_BEERS_PER_NO_SHOW = 6;
 
+type ServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+
+/** Shared by getPlayers and getAllData so the players order and paging cannot drift. */
+function fetchPlayers(supabase: ServerClient): Promise<Player[]> {
+  return fetchAllRows<Player>((from, to) =>
+    supabase.from("players").select("*").order("created_at", { ascending: true }).order("id", { ascending: true }).range(from, to),
+  );
+}
+
+/** Players only, for pages that need nothing else (same order and paging as getAllData). */
+export async function getPlayers(): Promise<Player[]> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    throw new Error("SUPABASE_NOT_CONFIGURED");
+  }
+  const supabase = await createSupabaseServerClient();
+  return fetchPlayers(supabase);
+}
+
 export type AllData = {
   players: Player[];
   sessions: Session[];
@@ -35,9 +53,7 @@ export async function getAllData(): Promise<AllData> {
   // Each table is paged through fetchAllRows so the PostgREST max_rows cap
   // cannot silently drop rows; every order ends in `id` so pages are stable.
   const [players, sessions, rawGames, absences, beerClears, settingsRes] = await Promise.all([
-    fetchAllRows<Player>((from, to) =>
-      supabase.from("players").select("*").order("created_at", { ascending: true }).order("id", { ascending: true }).range(from, to),
-    ),
+    fetchPlayers(supabase),
     fetchAllRows<Session>((from, to) =>
       supabase.from("sessions").select("*").order("played_on", { ascending: true }).order("id", { ascending: true }).range(from, to),
     ),

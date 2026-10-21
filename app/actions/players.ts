@@ -7,9 +7,8 @@ import { playerNameSchema } from "@/lib/schemas";
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 function revalidateNames() {
-  for (const path of ["/", "/players", "/stats", "/insights", "/beers", "/sessions"]) {
-    revalidatePath(path, "layout");
-  }
+  // Revalidating the root layout covers every page (revalidatePath.md:174-180).
+  revalidatePath("/", "layout");
 }
 
 function errorMessage(err: unknown): string {

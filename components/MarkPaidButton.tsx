@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { clearBeers } from "@/app/actions/beers";
 
 /** Pay off everything a player currently owes. */
 export function MarkPaidButton({ playerId, owed }: { playerId: string; owed: number }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -16,7 +14,6 @@ export function MarkPaidButton({ playerId, owed }: { playerId: string; owed: num
     startTransition(async () => {
       const res = await clearBeers(playerId);
       if (!res.ok) setError(res.error);
-      else router.refresh();
     });
   }
 

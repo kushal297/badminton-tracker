@@ -235,11 +235,17 @@ alter table absences add column if not exists noshow_on date;
 alter table absences add column if not exists note text;
 
 -- Backfill the calendar day from the linked session before dropping session_id.
-update absences a
-   set noshow_on = s.played_on
-  from sessions s
- where a.session_id = s.id
-   and a.noshow_on is null;
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+              where table_name = 'absences' and column_name = 'session_id') then
+    update absences a
+       set noshow_on = s.played_on
+      from sessions s
+     where a.session_id = s.id
+       and a.noshow_on is null;
+  end if;
+end $$;
 
 alter table absences alter column noshow_on set not null;
 

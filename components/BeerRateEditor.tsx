@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { setBeerRate } from "@/app/actions/beers";
 
 /** Shows the current beers-per-no-show rate with an inline edit affordance. */
 export function BeerRateEditor({ rate }: { rate: number }) {
-  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(String(rate));
   const [pending, startTransition] = useTransition();
@@ -25,7 +23,6 @@ export function BeerRateEditor({ rate }: { rate: number }) {
         setError(res.error);
       } else {
         setEditing(false);
-        router.refresh();
       }
     });
   }

@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { getAllData } from "@/lib/data";
 import { GameRow } from "@/components/GameRow";
 import { PageHeader, EmptyState, Card, btnPrimary } from "@/components/ui";
 import { formatDateLong } from "@/lib/format";
 import { auditNoticeMessage } from "@/lib/auditNotice";
+import { isValidISODate } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,7 @@ export default async function SessionPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { date } = await params;
+  if (!isValidISODate(date)) notFound();
   const { notice } = await searchParams;
   const noticeMessage = auditNoticeMessage(notice);
   const { players, games } = await getAllData();
@@ -42,7 +45,7 @@ export default async function SessionPage({
         title={formatDateLong(date)}
         subtitle={`${dayGames.length} game${dayGames.length === 1 ? "" : "s"}`}
         action={
-          <Link href="/new" className={btnPrimary}>
+          <Link href={`/new?date=${date}`} className={btnPrimary}>
             Add
           </Link>
         }
@@ -57,7 +60,7 @@ export default async function SessionPage({
           title="No games on this day"
           hint="They may all have been deleted, or this date has nothing logged yet."
           action={
-            <Link href="/new" className={btnPrimary}>
+            <Link href={`/new?date=${date}`} className={btnPrimary}>
               Log a game
             </Link>
           }
