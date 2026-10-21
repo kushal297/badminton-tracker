@@ -100,12 +100,17 @@ export async function setBeerRate(rate: number): Promise<ActionResult> {
 
   try {
     const supabase = await createSupabaseServerClient();
-    // Upsert (not update) so a missing settings row is created rather than the
-    // change silently affecting zero rows.
+    // Update, not upsert: anon has only SELECT and UPDATE on app_settings, and an
+    // upsert is INSERT ... ON CONFLICT, which needs INSERT. The seed row always exists.
     const updated = await supabase
       .from("app_settings")
-      .upsert({ id: true, beers_per_no_show: rate }, { onConflict: "id" });
+      .update({ beers_per_no_show: rate })
+      .eq("id", true)
+      .select("id");
     if (updated.error) throw updated.error;
+    if (!updated.data || updated.data.length === 0) {
+      return { ok: false, error: "Settings row missing; run supabase/v4.sql." };
+    }
   } catch (err) {
     return { ok: false, error: errorMessage(err) };
   }
