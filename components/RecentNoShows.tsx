@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { SectionLabel } from "@/components/ui";
 import { removeNoShow } from "@/app/actions/beers";
@@ -12,7 +11,6 @@ type RecentNoShow = { id: string; player_id: string; noshow_on: string; note: st
 
 /** The recent-no-shows ledger with remove. Rendered below the beer totals. */
 export function RecentNoShows({ allPlayers, recent }: { allPlayers: MiniPlayer[]; recent: RecentNoShow[] }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const playersById = new Map(allPlayers.map((p) => [p.id, p]));
@@ -20,14 +18,11 @@ export function RecentNoShows({ allPlayers, recent }: { allPlayers: MiniPlayer[]
   if (recent.length === 0) return null;
 
   function remove(id: string) {
+    if (!window.confirm("Remove this no-show? This cannot be undone.")) return;
     setError(null);
     startTransition(async () => {
       const res = await removeNoShow(id);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      router.refresh();
+      if (!res.ok) setError(res.error);
     });
   }
 
@@ -53,7 +48,7 @@ export function RecentNoShows({ allPlayers, recent }: { allPlayers: MiniPlayer[]
                 onClick={() => remove(r.id)}
                 disabled={pending}
                 aria-label="Remove no-show"
-                className="shrink-0 rounded-full border border-line bg-surface px-2.5 py-1 text-sm text-muted transition hover:text-loss disabled:opacity-60"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-sm text-muted transition hover:text-loss disabled:opacity-60"
               >
                 ✕
               </button>
