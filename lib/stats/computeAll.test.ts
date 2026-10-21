@@ -120,6 +120,18 @@ describe("computeAll — deterministic & edit/delete safe", () => {
     expect(ratingsOf(players(), shuffled, [s])).toEqual(ratingsOf(players(), base, [s]));
   });
 
+  it("replays a backdated game by its session date, not its insert time", () => {
+    const s1 = session("s1", "2026-06-01"), s2 = session("s2", "2026-06-02");
+    const g1 = game({ id: "g1", session: s1, seq: 1, a: ["alice", "bob"], b: ["cara", "dan"], scoreA: 21, scoreB: 10, playedAt: "2026-06-01T10:00:00Z" });
+    const g2 = game({ id: "g2", session: s2, seq: 1, a: ["alice", "bob"], b: ["cara", "dan"], scoreA: 21, scoreB: 10, playedAt: "2026-06-02T10:00:00Z" });
+    const g3 = game({ id: "g3", session: s1, seq: 2, a: ["alice", "bob"], b: ["cara", "dan"], scoreA: 10, scoreB: 21, playedAt: "2026-06-03T10:00:00Z" }); // backfilled on June 3
+    const out = computeAll(players(), [g1, g2, g3], [s1, s2]);
+    expect(out.orderedGames.map((g) => g.id)).toEqual(["g1", "g3", "g2"]);
+    expect(out.sessionsChrono.map((s) => s.playedOn)).toEqual(["2026-06-01", "2026-06-02"]);
+    // W, L, W in replay order ends on a one-game win streak (currentStreak is signed).
+    expect(out.leaderboard.find((r) => r.playerId === "alice")?.currentStreak).toBe(1);
+  });
+
   it("inserting a game then deleting it returns to the baseline ratings exactly", () => {
     const gX = game({ id: "gX", session: s, seq: 2, a: ["cara", "eve"], b: ["alice", "dan"], out: "bob", scoreA: 21, scoreB: 5, playedAt: "2026-02-01T10:05:00Z" });
     const withX = [g1, gX, g2, g3];
