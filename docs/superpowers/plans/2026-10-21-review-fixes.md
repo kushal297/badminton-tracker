@@ -8,7 +8,7 @@ A two-pass review on 2026-10-21 (six-dimension workflow with adversarial verific
 
 The user decided: fix **everything in the review**, land it as **one PR per task** that the user merges (main is branch-protected, memory `deploy-workflow`), and **back up the production database before any change so no data can be lost**. The backup route (CLI dump vs dashboard export) is left open; both are in Task 0.
 
-Production facts: Supabase project `tjztdk…` in `ap-south-1` (Mumbai), Postgres 17.6, free plan (no platform backups; Supabase docs recommend `supabase db dump`). Vercel project `badminton-tracker` executes functions in `iad1`. About 178 games exist. Preview deployments share the production database. `.env.local` points at a local Supabase stack; `supabase/migrations/20260616181700_init.sql` is byte-identical to `supabase/schema.sql`, so `supabase start` applies the full schema plus its seed rows (five placeholder players, one `app_settings` row).
+Production facts: Supabase project `tjztdk…` in `ap-south-1` (Mumbai), Postgres 17.6, free plan (no platform backups; Supabase docs recommend `supabase db dump`). Vercel project `badminton-tracker` executes functions in `iad1`. About 178 games exist. Vercel has the Supabase URL and key for Production and Development only, so Preview deployments have no database and render the error screen; they cannot be used for visual checks (the restored local stack is the verification route). The earlier claim that previews share the production database was wrong. `.env.local` points at a local Supabase stack; `supabase/migrations/20260616181700_init.sql` is byte-identical to `supabase/schema.sql`, so `supabase start` applies the full schema plus its seed rows (five placeholder players, one `app_settings` row).
 
 **Goal:** Remove every data-correctness defect, race and audit gap from the review, then the performance and UX defects, with a verified backup first and a test pinning each behaviour change.
 
@@ -253,7 +253,7 @@ Inputs the review implies but no existing test exercises; each gets a test in th
 
 - [ ] **Step 1:** Baseline: `curl -sI https://bt.rukhtechnologies.com/stats | grep x-vercel-id` (middle segment `iad1`) and `time_total` over three runs.
 - [ ] **Step 2:** Add the file (Hobby plan allows one region).
-- [ ] **Step 3:** Preview deploy header shows `bom1`; after merge repeat Step 1 and record both in the PR.
+- [ ] **Step 3:** The preview deploy has no database, but its response headers still show the region: check `x-vercel-id` on the preview URL for `bom1`; after merge repeat Step 1 and record both in the PR.
 - [ ] **Step 4:** Commit `perf: run Vercel functions in bom1 next to Supabase`.
 
 ---
@@ -351,10 +351,10 @@ Inputs the review implies but no existing test exercises; each gets a test in th
 
 - [ ] **Step 1: Failing tests** for `gameInputSchema`: rejects `playedOn` after `todayISO()` (`lib/format.ts:63`, Asia/Kolkata); rejects non-UUID player ids; rejects `satOut === ""`; accepts a valid input.
 - [ ] **Step 2:** Run → FAIL.
-- [ ] **Step 3:** Tighten the schema. Replace the three `revalidate*` helpers' lists with one `revalidatePath("/", "layout")`. Remove the three remaining `router.refresh()` calls (all follow revalidating actions). `app/sessions/[date]/page.tsx`: validate the param (regex plus a real date) else `notFound()`; "Add" and "Log a game" link to `/new?date=${date}`. `app/new/page.tsx` reads `searchParams.date` (validated, not after today) as `defaultDate` and loads players only via a new `getPlayers()` in `lib/data.ts` built on `fetchAllRows`. Guard the v3 backfill in `v3.sql`, `schema.sql` and the init migration with `if exists (select 1 from information_schema.columns where table_name = 'absences' and column_name = 'session_id')`. Add `app/apple-icon.tsx` using `ImageResponse` from `next/og` (180×180, theme colour `#07382a`, the shuttle glyph). `.env.example` and README document `ADMIN_PIN`, that Preview shares the production database, and that Preview needs the variable too.
+- [ ] **Step 3:** Tighten the schema. Replace the three `revalidate*` helpers' lists with one `revalidatePath("/", "layout")`. Remove the three remaining `router.refresh()` calls (all follow revalidating actions). `app/sessions/[date]/page.tsx`: validate the param (regex plus a real date) else `notFound()`; "Add" and "Log a game" link to `/new?date=${date}`. `app/new/page.tsx` reads `searchParams.date` (validated, not after today) as `defaultDate` and loads players only via a new `getPlayers()` in `lib/data.ts` built on `fetchAllRows`. Guard the v3 backfill in `v3.sql`, `schema.sql` and the init migration with `if exists (select 1 from information_schema.columns where table_name = 'absences' and column_name = 'session_id')`. Add `app/apple-icon.tsx` using `ImageResponse` from `next/og` (180×180, theme colour `#07382a`, the shuttle glyph). `.env.example` and README document `ADMIN_PIN` and state that Preview deployments have no Supabase variables (so they show the error screen) and that, if working previews are ever wanted, Preview must get its own Supabase URL, key and `ADMIN_PIN` pointing at a separate test project, never production.
 - [ ] **Step 4:** `npm test`, typecheck, lint. Local: `/sessions/not-a-date` → 404; Add from a past session pre-fills that date; `curl -I http://localhost:3000/apple-icon` → 200 image/png.
 - [ ] **Step 5:** Commit `chore: schema tightening, revalidation cleanup, session date guards, apple icon`.
-- [ ] **Step 6 (user):** `vercel env add ADMIN_PIN preview` with the same value as Production.
+- [ ] **Step 6 (user, optional):** only if working previews are wanted, create a separate Supabase test project and add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `ADMIN_PIN` for the Preview environment. Not required for this plan.
 
 ---
 
