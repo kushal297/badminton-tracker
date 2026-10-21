@@ -59,12 +59,12 @@ export default async function InsightsPage({
 
   // ---- rating-trend chart: pivot to wide rows keyed by day label ----
   const trendSeries: Series[] = activePlayers.map((p) => ({
-    key: p.name,
+    key: p.id,
     name: p.name,
     color: colorForPlayer(p),
   }));
 
-  // Collect (playedOn -> {playerName: rating}) within the window.
+  // Collect (playedOn -> {playerId: rating}) within the window.
   const trendByDate = new Map<string, Record<string, number>>();
   for (const p of activePlayers) {
     const history =
@@ -79,7 +79,7 @@ export default async function InsightsPage({
         trendByDate.set(pt.playedOn, row);
       }
       // For per-game (day) history, keep the last rating of the day per player.
-      row[p.name] = pt.rating;
+      row[p.id] = pt.rating;
     }
   }
   const trendData: Array<Record<string, string | number>> = [...trendByDate.entries()]
