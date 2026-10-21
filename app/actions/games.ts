@@ -4,10 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyAdminPin } from "@/lib/admin";
+import { isUniqueViolation } from "@/lib/dbErrors";
+import { withUniqueRetry } from "@/lib/seqRetry";
+import { resolveSessionId } from "@/lib/sessionLookup";
 import { gameInputSchema, type GameInput } from "@/lib/schemas";
 import type { Game } from "@/lib/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+const BUSY: ActionResult = { ok: false, error: "Busy, please try again." };
 
 function revalidateEverything() {
   // The whole app is derived from games, so any game change touches every view.
@@ -21,13 +26,11 @@ async function getOrCreateSession(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   playedOn: string,
 ): Promise<string> {
-  const existing = await supabase.from("sessions").select("id").eq("played_on", playedOn).maybeSingle();
-  if (existing.error) throw existing.error;
-  if (existing.data) return existing.data.id;
-
-  const created = await supabase.from("sessions").insert({ played_on: playedOn }).select("id").single();
-  if (created.error) throw created.error;
-  return created.data.id;
+  // A concurrent create of the same day hits sessions_one_per_day; resolveSessionId re-selects then.
+  return resolveSessionId(
+    () => supabase.from("sessions").select("id").eq("played_on", playedOn).maybeSingle(),
+    () => supabase.from("sessions").insert({ played_on: playedOn }).select("id").single(),
+  );
 }
 
 async function nextSessionSeq(
@@ -70,16 +73,18 @@ export async function saveGame(raw: GameInput): Promise<ActionResult> {
   try {
     const supabase = await createSupabaseServerClient();
     const sessionId = await getOrCreateSession(supabase, input.playedOn);
-    const seq = await nextSessionSeq(supabase, sessionId);
 
-    const inserted = await supabase.from("games").insert(toRow(input, sessionId, seq)).select("*").single();
-    if (inserted.error) throw inserted.error;
+    const inserted = await withUniqueRetry<Game>(async () => {
+      const seq = await nextSessionSeq(supabase, sessionId);
+      return supabase.from("games").insert(toRow(input, sessionId, seq)).select("*").single();
+    });
+    if (!inserted) return BUSY;
 
     await supabase.from("game_events").insert({
-      game_id: inserted.data.id,
+      game_id: inserted.id,
       action: "create",
       editor_name: input.editorName ?? null,
-      after_data: inserted.data,
+      after_data: inserted,
     });
   } catch (err) {
     return { ok: false, error: errorMessage(err) };
@@ -106,25 +111,28 @@ export async function updateGame(gameId: string, raw: GameInput, pin: string): P
 
     // Resolve the session for the chosen date; only re-sequence if it moved days.
     const sessionId = await getOrCreateSession(supabase, input.playedOn);
-    let seq = previous.session_seq;
-    if (sessionId !== previous.session_id) {
-      seq = await nextSessionSeq(supabase, sessionId);
-    }
+    const writeRow = (seq: number) =>
+      supabase.from("games").update(toRow(input, sessionId, seq)).eq("id", gameId).select("*").single();
 
-    const updated = await supabase
-      .from("games")
-      .update(toRow(input, sessionId, seq))
-      .eq("id", gameId)
-      .select("*")
-      .single();
-    if (updated.error) throw updated.error;
+    let updated: Game | null = null;
+    if (sessionId === previous.session_id) {
+      const res = await writeRow(previous.session_seq);
+      // A unique violation means this edit is stale (the game moved and its number was reused);
+      // fall through and claim a fresh number instead.
+      if (res.error && !isUniqueViolation(res.error)) throw res.error;
+      updated = res.data;
+    }
+    if (!updated) {
+      updated = await withUniqueRetry<Game>(async () => writeRow(await nextSessionSeq(supabase, sessionId)));
+      if (!updated) return BUSY;
+    }
 
     await supabase.from("game_events").insert({
       game_id: gameId,
       action: "edit",
       editor_name: input.editorName ?? null,
       before_data: previous,
-      after_data: updated.data,
+      after_data: updated,
     });
   } catch (err) {
     return { ok: false, error: errorMessage(err) };
