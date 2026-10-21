@@ -60,6 +60,7 @@ create table if not exists games (
   constraint games_scores_nonneg check (score_a >= 0 and score_b >= 0),
   constraint games_no_tie        check (score_a <> score_b),
   constraint games_target_pos    check (game_target > 0),
+  constraint games_session_seq_unique unique (session_id, session_seq),
   constraint games_players_distinct check (
         team_a1 <> team_a2 and team_a1 <> team_b1 and team_a1 <> team_b2
     and team_a2 <> team_b1 and team_a2 <> team_b2 and team_b1 <> team_b2
