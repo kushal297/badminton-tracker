@@ -47,9 +47,9 @@ export function addDays(iso: string, days: number): string {
  *   day   — start = end = anchor
  *   week  — start = anchor - 6 days, end = anchor (a rolling 7-day window)
  *   month — first .. last calendar day of the anchor's month
- *   all   — min .. max of `datesWithGames` (or anchor for both when empty)
+ *   all   — min .. max of `dates`, every date with a game or a no-show (anchor for both when empty)
  */
-export function resolveWindow(kind: WindowKind, anchorISO: string, datesWithGames: string[]): DateWindow {
+export function resolveWindow(kind: WindowKind, anchorISO: string, dates: string[]): DateWindow {
   switch (kind) {
     case "day":
       return { kind, startISO: anchorISO, endISO: anchorISO, label: formatDateLong(anchorISO) };
@@ -66,13 +66,18 @@ export function resolveWindow(kind: WindowKind, anchorISO: string, datesWithGame
       return { kind, startISO, endISO, label: `${formatDateLong(startISO)} – ${formatDateLong(endISO)}` };
     }
     case "all": {
-      if (datesWithGames.length === 0) {
+      if (dates.length === 0) {
         return { kind, startISO: anchorISO, endISO: anchorISO, label: "All time" };
       }
-      const sorted = [...datesWithGames].sort();
+      const sorted = [...dates].sort();
       return { kind, startISO: sorted[0], endISO: sorted[sorted.length - 1], label: "All time" };
     }
   }
+}
+
+/** Sorted, de-duplicated union of every game day and no-show day. */
+export function activityDates(games: { played_on: string }[], absences: { noshow_on: string }[]): string[] {
+  return [...new Set([...games.map((g) => g.played_on), ...absences.map((a) => a.noshow_on)])].sort();
 }
 
 // ---- period insights -------------------------------------------------------

@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { deleteGame } from "@/app/actions/games";
+import { auditRedirectPath } from "@/lib/auditNotice";
 
-export function GameActions({ gameId, editHref }: { gameId: string; editHref: string }) {
+export function GameActions({ gameId, playedOn, editHref }: { gameId: string; playedOn: string; editHref: string }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +19,11 @@ export function GameActions({ gameId, editHref }: { gameId: string; editHref: st
     startTransition(async () => {
       const res = await deleteGame(gameId, pin);
       if (res && !res.ok) setError(res.error);
-      else setOpen(false);
+      else {
+        setOpen(false);
+        // A warning means the audit entry failed; the session page shows a banner saying so.
+        if (res.warning) router.push(auditRedirectPath(playedOn, "audit-delete"));
+      }
     });
   }
 
@@ -27,7 +34,7 @@ export function GameActions({ gameId, editHref }: { gameId: string; editHref: st
         onClick={() => setOpen((o) => !o)}
         aria-label="Game options"
         aria-expanded={open}
-        className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-court-soft hover:text-ink"
+        className="flex h-11 w-11 items-center justify-center rounded-full text-muted transition hover:bg-court-soft hover:text-ink"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
           <circle cx="12" cy="5" r="1.6" />

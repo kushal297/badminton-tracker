@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { btnPrimary } from "@/components/ui";
 import { deleteGame, saveGame, updateGame, type ActionResult } from "@/app/actions/games";
+import { auditRedirectPath } from "@/lib/auditNotice";
 import type { GameInput } from "@/lib/schemas";
+import { deriveSatOut } from "@/lib/satOut";
 
 type MiniPlayer = { id: string; name: string; color: string | null; photo_url: string | null };
 
@@ -15,6 +17,7 @@ export type EntryInitial = {
   scoreB: number;
   playedOn: string;
   gameTarget: number;
+  satOut: string | null;
 };
 
 const SLOT_TEAM = ["A", "A", "B", "B"] as const;
@@ -45,6 +48,11 @@ export function GameEntryForm({
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
   const assigned = slots.filter((s): s is string => Boolean(s));
   const resting = players.filter((p) => !assigned.includes(p.id));
+  const satOut = deriveSatOut(
+    resting.map((p) => p.id),
+    mode === "edit" ? initial!.satOut : undefined,
+  );
+  const satOutPlayer = satOut ? byId.get(satOut) : undefined;
   const ready = assigned.length === 4 && scoreA !== scoreB;
 
   function toggle(id: string) {
@@ -71,7 +79,7 @@ export function GameEntryForm({
       playedOn,
       teamA: [slots[0]!, slots[1]!],
       teamB: [slots[2]!, slots[3]!],
-      satOut: resting.length === 1 ? resting[0].id : null,
+      satOut,
       scoreA,
       scoreB,
       gameTarget: target,
@@ -101,7 +109,8 @@ export function GameEntryForm({
       const res = await deleteGame(gameId, pin);
       if (!res.ok) setError(res.error);
       // Navigate to the game's stored day, not the editable date field — delete ignores date edits.
-      else router.push(`/sessions/${initial?.playedOn ?? playedOn}`);
+      // A warning means the audit entry failed; the session page shows a banner saying so.
+      else router.push(auditRedirectPath(initial?.playedOn ?? playedOn, res.warning ? "audit-delete" : null));
     });
   }
 
@@ -176,6 +185,7 @@ export function GameEntryForm({
                 key={p.id}
                 type="button"
                 onClick={() => toggle(p.id)}
+                aria-pressed={!isResting}
                 className={`flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-sm transition ${
                   team
                     ? "border-transparent bg-court-soft text-ink ring-1 ring-court/30"
@@ -198,9 +208,9 @@ export function GameEntryForm({
             );
           })}
         </div>
-        {resting.length === 1 ? (
+        {satOutPlayer ? (
           <p className="mt-2 text-sm text-muted">
-            <span className="font-medium text-ink">{resting[0].name}</span> sits this one out.
+            <span className="font-medium text-ink">{satOutPlayer.name}</span> sits this one out.
           </p>
         ) : null}
       </div>
@@ -211,7 +221,7 @@ export function GameEntryForm({
           {winnerText}
         </p>
         {error ? (
-          <p className="mb-3 rounded-lg bg-shuttle-soft px-3 py-2 text-center text-sm text-loss">{error}</p>
+          <p role="alert" className="mb-3 rounded-lg bg-shuttle-soft px-3 py-2 text-center text-sm text-loss">{error}</p>
         ) : null}
         <button type="button" onClick={submit} disabled={!ready || pending} className={`${btnPrimary} w-full`}>
           {pending && busyAction === "save" ? "Saving…" : mode === "edit" ? "Save changes" : "Save game"}
@@ -276,30 +286,30 @@ function TeamPanel({
             ),
           )}
         </div>
-        {/* Scoreboard */}
-        <div className="flex flex-col items-center justify-center gap-1 bg-court-deep px-3 py-2 text-white">
+        {/* Scoreboard: one horizontal row, minus left, plus right */}
+        <div className="flex flex-row items-center justify-center gap-1.5 bg-court-deep px-3 py-2 text-white">
           <button
             type="button"
-            aria-label={`${label} plus one`}
-            onClick={() => setScore(clamp(score + 1))}
-            className="flex h-7 w-9 items-center justify-center rounded-md bg-white/15 text-lg leading-none hover:bg-white/25"
+            aria-label={`${label} minus one`}
+            onClick={() => setScore(clamp(score - 1))}
+            className="flex h-11 w-11 items-center justify-center rounded-md bg-white/15 text-xl leading-none hover:bg-white/25"
           >
-            +
+            &minus;
           </button>
           <input
             inputMode="numeric"
             aria-label={`${label} score`}
             value={score}
             onChange={(e) => setScore(clamp(parseInt(e.target.value.replace(/\D/g, ""), 10) || 0))}
-            className="tnum w-16 bg-transparent text-center text-3xl font-bold outline-none"
+            className="tnum h-11 w-14 rounded-lg border border-white/30 bg-white/10 text-center text-3xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           />
           <button
             type="button"
-            aria-label={`${label} minus one`}
-            onClick={() => setScore(clamp(score - 1))}
-            className="flex h-7 w-9 items-center justify-center rounded-md bg-white/15 text-lg leading-none hover:bg-white/25"
+            aria-label={`${label} plus one`}
+            onClick={() => setScore(clamp(score + 1))}
+            className="flex h-11 w-11 items-center justify-center rounded-md bg-white/15 text-xl leading-none hover:bg-white/25"
           >
-            &minus;
+            +
           </button>
         </div>
       </div>

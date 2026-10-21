@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { PhotoUploader } from "@/components/PhotoUploader";
 import { btnPrimary } from "@/components/ui";
@@ -17,7 +16,6 @@ type Row = {
 };
 
 export function PlayersManager({ initial }: { initial: Row[] }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,7 +29,6 @@ export function PlayersManager({ initial }: { initial: Row[] }) {
       else {
         setError(null);
         onOk();
-        router.refresh();
       }
     });
 
@@ -64,7 +61,7 @@ export function PlayersManager({ initial }: { initial: Row[] }) {
       <ul className="space-y-2">
         {active.map((p) => (
           <li key={p.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2.5">
-            <PhotoUploader player={p} />
+            <PhotoUploader player={p} onError={setError} />
             {editingId === p.id ? (
               <input
                 autoFocus
@@ -105,9 +102,12 @@ export function PlayersManager({ initial }: { initial: Row[] }) {
             )}
             <button
               type="button"
-              onClick={() => run(() => setPlayerActive(p.id, false), () => {})}
+              onClick={() => {
+                if (!window.confirm(`Retire ${p.name}? They stop appearing on the new-game screen; you can bring them back.`)) return;
+                run(() => setPlayerActive(p.id, false), () => {});
+              }}
               aria-label={`Retire ${p.name}`}
-              className="text-sm text-muted hover:text-loss"
+              className="ml-3 h-11 px-3 text-sm text-muted hover:text-loss"
             >
               Retire
             </button>
