@@ -134,7 +134,10 @@ create policy anon_insert_events on game_events for insert to anon with check (t
 -- needs base GRANTs on the tables. (Hosted Supabase often adds these by default;
 -- granting explicitly makes this schema self-contained on any Postgres.)
 grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on players, sessions, games to anon, authenticated;
+-- No delete: the app soft-deletes games and never deletes sessions or players (v4, Task 7).
+grant select, insert, update on players, sessions, games to anon, authenticated;
+-- A narrower grant does not remove privileges hosted Supabase may have granted by default.
+revoke delete on players, sessions, games from anon, authenticated;
 grant select, insert on game_events to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -175,7 +178,11 @@ create table if not exists beer_clears (
   id         uuid primary key default gen_random_uuid(),
   player_id  uuid not null references players(id) on delete restrict,
   beers      int  not null check (beers > 0),
-  cleared_at timestamptz not null default now()
+  cleared_at timestamptz not null default now(),
+  -- v4 (Task 7): lifetime beers earned at the moment of the clear; one clear per debt, so
+  -- concurrent Mark Paid taps cannot double-credit. Null on rows from before v4 (NULLs never collide).
+  earned_total int,
+  constraint beer_clears_one_per_debt unique (player_id, earned_total)
 );
 
 -- ---------------------------------------------------------------------------

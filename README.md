@@ -54,7 +54,7 @@ Each player has an Elo rating starting at **1000**. A team's rating is the avera
 
 ## A note on access
 
-There is no authentication by design — the link is the key. Anyone who has it can add, edit, and delete games. That's the right trade-off for a private group, but **don't post the URL publicly.** Every change is recorded in an append-only `game_events` audit log, and deletes are soft (recoverable in the database). Real per-player login is a documented future upgrade.
+There is no authentication by design — the link is the key. Anyone who has it can add, edit, and delete games. That's the right trade-off for a private group, but **don't post the URL publicly.** Every add, edit and delete made in the app is recorded in an append-only `game_events` audit log, and deletes in the app are soft (recoverable in the database); if an audit entry fails to write, the app says so instead of failing silently. Hard deletes of games, sessions and players are blocked at the database for the anon key, by `supabase/schema.sql` on a fresh install and by `supabase/v4.sql` on an existing one. The key can still edit rows directly through the Supabase REST API, and such edits made outside the app are not audited. Real per-player login is a documented future upgrade.
 
 ## Scripts
 

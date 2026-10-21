@@ -23,3 +23,22 @@ do $$ begin
     alter table games add constraint games_session_seq_unique unique (session_id, session_seq);
   end if;
 end $$;
+
+-- 3. Audit integrity (Task 7)
+-- The app only soft-deletes games (deleted_at) and never deletes sessions or players, so
+-- anon has no reason to hard-delete them; without this, anyone with the key could erase rows
+-- through the REST API with no audit trail. The only hard delete in the app is a no-show
+-- (absences), which keeps its grant.
+revoke delete on games, sessions, players from anon, authenticated;
+
+-- One beer clear per debt: earned_total is the player's lifetime beers earned at the moment
+-- of the clear. Two concurrent Mark Paid taps compute the same total, so the second insert
+-- hits 23505 and the app treats it as success; a later clear after new no-shows has a higher
+-- total and goes through. Historical rows keep earned_total null, and Postgres treats NULLs
+-- as distinct in a unique constraint, so they never collide with each other or new rows.
+alter table beer_clears add column if not exists earned_total int;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'beer_clears_one_per_debt') then
+    alter table beer_clears add constraint beer_clears_one_per_debt unique (player_id, earned_total);
+  end if;
+end $$;

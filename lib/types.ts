@@ -74,4 +74,10 @@ export type Absence = {
 };
 
 /** Append-only ledger of beers paid off; lifetime "earned" is never reduced. */
-export type BeerClear = { id: string; player_id: string; beers: number; cleared_at: string };
+export type BeerClear = {
+  id: string;
+  player_id: string;
+  beers: number;
+  cleared_at: string;
+  earned_total: number | null; // lifetime beers earned when cleared; one clear per debt; null before v4
+};

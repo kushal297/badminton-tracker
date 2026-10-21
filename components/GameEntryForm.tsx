@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { btnPrimary } from "@/components/ui";
 import { deleteGame, saveGame, updateGame, type ActionResult } from "@/app/actions/games";
+import { auditRedirectPath } from "@/lib/auditNotice";
 import type { GameInput } from "@/lib/schemas";
 import { deriveSatOut } from "@/lib/satOut";
 
@@ -108,7 +109,8 @@ export function GameEntryForm({
       const res = await deleteGame(gameId, pin);
       if (!res.ok) setError(res.error);
       // Navigate to the game's stored day, not the editable date field — delete ignores date edits.
-      else router.push(`/sessions/${initial?.playedOn ?? playedOn}`);
+      // A warning means the audit entry failed; the session page shows a banner saying so.
+      else router.push(auditRedirectPath(initial?.playedOn ?? playedOn, res.warning ? "audit-delete" : null));
     });
   }
 

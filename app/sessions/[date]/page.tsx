@@ -1,13 +1,22 @@
 import Link from "next/link";
 import { getAllData } from "@/lib/data";
 import { GameRow } from "@/components/GameRow";
-import { PageHeader, EmptyState, btnPrimary } from "@/components/ui";
+import { PageHeader, EmptyState, Card, btnPrimary } from "@/components/ui";
 import { formatDateLong } from "@/lib/format";
+import { auditNoticeMessage } from "@/lib/auditNotice";
 
 export const dynamic = "force-dynamic";
 
-export default async function SessionPage({ params }: { params: Promise<{ date: string }> }) {
+export default async function SessionPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ date: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { date } = await params;
+  const { notice } = await searchParams;
+  const noticeMessage = auditNoticeMessage(notice);
   const { players, games } = await getAllData();
   const playersById = new Map(players.map((p) => [p.id, p]));
 
@@ -38,6 +47,10 @@ export default async function SessionPage({ params }: { params: Promise<{ date: 
           </Link>
         }
       />
+
+      {noticeMessage ? (
+        <Card className="mb-4 px-4 py-3 text-sm">{noticeMessage}</Card>
+      ) : null}
 
       {dayGames.length === 0 ? (
         <EmptyState

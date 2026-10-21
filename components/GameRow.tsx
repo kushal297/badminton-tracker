@@ -43,7 +43,7 @@ export function GameRow({
           <TeamLine players={teamB} score={game.score_b} won={!aWon} />
         </div>
         {editable ? (
-          <GameActions gameId={game.id} editHref={`/sessions/${game.played_on}/${game.id}/edit`} />
+          <GameActions gameId={game.id} playedOn={game.played_on} editHref={`/sessions/${game.played_on}/${game.id}/edit`} />
         ) : null}
       </div>
       {satOut || game.game_target !== 21 ? (
