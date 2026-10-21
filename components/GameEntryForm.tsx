@@ -178,6 +178,7 @@ export function GameEntryForm({
                 key={p.id}
                 type="button"
                 onClick={() => toggle(p.id)}
+                aria-pressed={!isResting}
                 className={`flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-sm transition ${
                   team
                     ? "border-transparent bg-court-soft text-ink ring-1 ring-court/30"
@@ -213,7 +214,7 @@ export function GameEntryForm({
           {winnerText}
         </p>
         {error ? (
-          <p className="mb-3 rounded-lg bg-shuttle-soft px-3 py-2 text-center text-sm text-loss">{error}</p>
+          <p role="alert" className="mb-3 rounded-lg bg-shuttle-soft px-3 py-2 text-center text-sm text-loss">{error}</p>
         ) : null}
         <button type="button" onClick={submit} disabled={!ready || pending} className={`${btnPrimary} w-full`}>
           {pending && busyAction === "save" ? "Saving…" : mode === "edit" ? "Save changes" : "Save game"}
@@ -278,30 +279,30 @@ function TeamPanel({
             ),
           )}
         </div>
-        {/* Scoreboard */}
-        <div className="flex flex-col items-center justify-center gap-1 bg-court-deep px-3 py-2 text-white">
+        {/* Scoreboard: one horizontal row, minus left, plus right */}
+        <div className="flex flex-row items-center justify-center gap-1.5 bg-court-deep px-3 py-2 text-white">
           <button
             type="button"
-            aria-label={`${label} plus one`}
-            onClick={() => setScore(clamp(score + 1))}
-            className="flex h-7 w-9 items-center justify-center rounded-md bg-white/15 text-lg leading-none hover:bg-white/25"
+            aria-label={`${label} minus one`}
+            onClick={() => setScore(clamp(score - 1))}
+            className="flex h-11 w-11 items-center justify-center rounded-md bg-white/15 text-xl leading-none hover:bg-white/25"
           >
-            +
+            &minus;
           </button>
           <input
             inputMode="numeric"
             aria-label={`${label} score`}
             value={score}
             onChange={(e) => setScore(clamp(parseInt(e.target.value.replace(/\D/g, ""), 10) || 0))}
-            className="tnum w-16 bg-transparent text-center text-3xl font-bold outline-none"
+            className="tnum h-11 w-14 rounded-lg border border-white/30 bg-white/10 text-center text-3xl font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           />
           <button
             type="button"
-            aria-label={`${label} minus one`}
-            onClick={() => setScore(clamp(score - 1))}
-            className="flex h-7 w-9 items-center justify-center rounded-md bg-white/15 text-lg leading-none hover:bg-white/25"
+            aria-label={`${label} plus one`}
+            onClick={() => setScore(clamp(score + 1))}
+            className="flex h-11 w-11 items-center justify-center rounded-md bg-white/15 text-xl leading-none hover:bg-white/25"
           >
-            &minus;
+            +
           </button>
         </div>
       </div>
