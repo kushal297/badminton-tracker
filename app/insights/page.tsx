@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getAllData } from "@/lib/data";
 import { computeAll } from "@/lib/stats/computeAll";
-import { addDays, computeInsights, rankPairs, resolveWindow, toISO, type WindowKind } from "@/lib/stats/computeInsights";
+import { activityDates, addDays, computeInsights, rankPairs, resolveWindow, toISO, type WindowKind } from "@/lib/stats/computeInsights";
 import { PageHeader, SectionLabel, Card, EmptyState } from "@/components/ui";
 import { PairRanking } from "@/components/PairRanking";
 import { MultiLineChart, type Series } from "@/components/charts/MultiLineChart";
@@ -45,14 +45,14 @@ export default async function InsightsPage({
 
   const playersById = new Map(players.map((p) => [p.id, p]));
 
-  // Sorted unique calendar days that actually have games (soft-deletes already gone).
-  const datesWithGames = [...new Set(out.orderedGames.map((g) => g.played_on))].sort();
-  const latest = datesWithGames.length > 0 ? datesWithGames[datesWithGames.length - 1] : todayISO();
-  const earliest = datesWithGames.length > 0 ? datesWithGames[0] : latest;
+  // Sorted unique calendar days with a game or a no-show (soft-deletes already gone).
+  const activity = activityDates(out.orderedGames, absences);
+  const latest = activity.length > 0 ? activity[activity.length - 1] : todayISO();
+  const earliest = activity.length > 0 ? activity[0] : latest;
 
   const kind: WindowKind = isWindowKind(windowParam) ? windowParam : "week";
   const anchor = anchorParam && /^\d{4}-\d{2}-\d{2}$/.test(anchorParam) ? anchorParam : latest;
-  const window = resolveWindow(kind, anchor, datesWithGames);
+  const window = resolveWindow(kind, anchor, activity);
   const ins = computeInsights(out, players, absences, beersPerNoShow, window);
 
   const activePlayers = players.filter((p) => p.is_active);
@@ -111,8 +111,8 @@ export default async function InsightsPage({
   const prevAnchor = stepAnchor(kind === "all" ? "day" : kind, anchor, -1);
   const nextAnchor = stepAnchor(kind === "all" ? "day" : kind, anchor, 1);
   // A previous step is useful only if some game day exists at/before its window end.
-  const prevWindow = showNav ? resolveWindow(kind, prevAnchor, datesWithGames) : null;
-  const nextWindow = showNav ? resolveWindow(kind, nextAnchor, datesWithGames) : null;
+  const prevWindow = showNav ? resolveWindow(kind, prevAnchor, activity) : null;
+  const nextWindow = showNav ? resolveWindow(kind, nextAnchor, activity) : null;
   const canPrev = !!prevWindow && earliest <= prevWindow.endISO;
   const canNext = !!nextWindow && nextWindow.startISO <= latest && anchor < latest;
   const atLatest = anchor >= latest;

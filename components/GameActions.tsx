@@ -34,7 +34,7 @@ export function GameActions({ gameId, playedOn, editHref }: { gameId: string; pl
         onClick={() => setOpen((o) => !o)}
         aria-label="Game options"
         aria-expanded={open}
-        className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-court-soft hover:text-ink"
+        className="flex h-11 w-11 items-center justify-center rounded-full text-muted transition hover:bg-court-soft hover:text-ink"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
           <circle cx="12" cy="5" r="1.6" />

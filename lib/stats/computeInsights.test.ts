@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeInsights, rankPairs, resolveWindow } from "@/lib/stats/computeInsights";
+import { activityDates, computeInsights, rankPairs, resolveWindow } from "@/lib/stats/computeInsights";
 import { computeAll } from "@/lib/stats/computeAll";
 import { STATS_CONFIG } from "@/lib/stats/config";
 import type { Absence, GameWithDate, Player, Session } from "@/lib/types";
@@ -341,5 +341,47 @@ describe("rankPairs", () => {
 
   it("uses STATS_CONFIG.MIN_PAIR_GAMES as the default threshold", () => {
     expect(STATS_CONFIG.MIN_PAIR_GAMES).toBe(3);
+  });
+});
+
+// ===========================================================================
+// activityDates + All time window
+// ===========================================================================
+
+describe("activityDates", () => {
+  it("returns the sorted union of game and no-show dates", () => {
+    const games = [{ played_on: "2026-06-02" }, { played_on: "2026-06-01" }];
+    const abs = [{ noshow_on: "2026-06-03" }];
+    expect(activityDates(games, abs)).toEqual(["2026-06-01", "2026-06-02", "2026-06-03"]);
+  });
+
+  it("collapses duplicates", () => {
+    const games = [{ played_on: "2026-06-01" }, { played_on: "2026-06-01" }];
+    const abs = [{ noshow_on: "2026-06-01" }, { noshow_on: "2026-06-01" }];
+    expect(activityDates(games, abs)).toEqual(["2026-06-01"]);
+  });
+
+  it("works with no games and one absence", () => {
+    expect(activityDates([], [{ noshow_on: "2026-06-05" }])).toEqual(["2026-06-05"]);
+  });
+
+  it("returns [] when both are empty", () => {
+    expect(activityDates([], [])).toEqual([]);
+  });
+
+  it("All time counts a no-show after the last game day", () => {
+    const ps = players();
+    const sess = [session("s1", "2026-06-01"), session("s2", "2026-06-02")];
+    const games = [
+      game("s1", "2026-06-01", "alice", "bob", "cara", "dan", 21, 10),
+      game("s2", "2026-06-02", "alice", "bob", "cara", "dan", 21, 12),
+    ];
+    const out = computeAll(ps, games, sess);
+    const absences = [absence("eve", "2026-06-03")];
+    const win = resolveWindow("all", "2026-06-02", activityDates(out.orderedGames, absences));
+    const ins = computeInsights(out, ps, absences, RATE, win);
+
+    expect(ins.noShows.count).toBe(1);
+    expect(ins.beersEarned).toBe(RATE);
   });
 });

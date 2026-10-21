@@ -23,9 +23,9 @@ function TeamLine({ players, won }: { players: Player[]; won: boolean }) {
 }
 
 /**
- * The match card on session screens. A left accent bar colored by how decisive
+ * The match card on the Home feed and session screens. A left accent bar colored by how decisive
  * the result was: green for a 6+ blowout, gold for in-between, neutral slate for
- * a tight 4-or-fewer finish. Tapping the card opens the edit screen.
+ * a tight 4-or-fewer finish. Tapping the card links to the edit screen.
  */
 export function MatchCard({
   game,
