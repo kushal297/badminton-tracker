@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { btnPrimary } from "@/components/ui";
 import { addNoShow } from "@/app/actions/beers";
 import { todayISO } from "@/lib/format";
@@ -10,7 +9,6 @@ import type { MiniPlayer } from "@/lib/players";
 /** The "log a no-show" form. The recent-no-shows list lives separately
  *  (RecentNoShows), so it can render below the beer totals. */
 export function NoShowForm({ players }: { players: MiniPlayer[] }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [playerId, setPlayerId] = useState<string>(players[0]?.id ?? "");
   const [date, setDate] = useState<string>(todayISO());
@@ -35,7 +33,6 @@ export function NoShowForm({ players }: { players: MiniPlayer[] }) {
         return;
       }
       setNote("");
-      router.refresh();
     });
   }
 

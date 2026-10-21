@@ -15,10 +15,8 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
  * Sessions are revalidated by layout because absence pills live on session pages.
  */
 function revalidateBeerViews() {
-  for (const path of ["/", "/beers", "/stats", "/insights"]) {
-    revalidatePath(path, "layout");
-  }
-  revalidatePath("/sessions", "layout");
+  // Revalidating the root layout covers every page (revalidatePath.md:174-180).
+  revalidatePath("/", "layout");
 }
 
 function errorMessage(err: unknown): string {
@@ -85,7 +83,11 @@ export async function clearBeers(playerId: string): Promise<ActionResult> {
     const { players, absences, beerClears, beersPerNoShow } = await getAllData();
     const beers = computeBeers(players, absences, beerClears, beersPerNoShow);
     const standing = beers.perPlayer[playerId];
-    if (!standing || standing.owed <= 0) return { ok: true };
+    if (!standing || standing.owed <= 0) {
+      // Nothing to write, but the caller's view may be stale (someone else cleared first).
+      revalidateBeerViews();
+      return { ok: true };
+    }
 
     const supabase = await createSupabaseServerClient();
     const inserted = await supabase

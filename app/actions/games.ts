@@ -18,9 +18,8 @@ const GAME_GONE: ActionResult = { ok: false, error: "That game was deleted." };
 
 function revalidateEverything() {
   // The whole app is derived from games, so any game change touches every view.
-  for (const path of ["/", "/sessions", "/leaderboard", "/players", "/rivalries", "/achievements"]) {
-    revalidatePath(path, "layout");
-  }
+  // Revalidating the root layout covers every page (revalidatePath.md:174-180).
+  revalidatePath("/", "layout");
 }
 
 /** Find the session row for a calendar day, creating it if needed. Returns the session id. */
