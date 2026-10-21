@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAllData } from "@/lib/data";
+import { isUniqueViolation } from "@/lib/dbErrors";
 import { computeBeers } from "@/lib/stats/beers";
 import { todayISO } from "@/lib/format";
 
@@ -73,17 +74,24 @@ export async function removeNoShow(id: string): Promise<ActionResult> {
  * Pay off everything a player currently owes. We recompute their owed amount
  * from scratch and append a single clear row for that amount, so lifetime
  * "earned" is never reduced — the board still remembers every no-show.
+ * Each clear records the player's lifetime earned total at that moment, and
+ * beer_clears_one_per_debt allows one clear per (player, earned_total). Two concurrent
+ * Mark Paid taps compute the same total, so the second insert hits 23505; the first
+ * already paid off that exact debt, so that counts as success. A clear after new
+ * no-shows has a higher total and is written normally.
  */
 export async function clearBeers(playerId: string): Promise<ActionResult> {
   try {
     const { players, absences, beerClears, beersPerNoShow } = await getAllData();
     const beers = computeBeers(players, absences, beerClears, beersPerNoShow);
-    const owed = beers.perPlayer[playerId]?.owed ?? 0;
-    if (owed <= 0) return { ok: true };
+    const standing = beers.perPlayer[playerId];
+    if (!standing || standing.owed <= 0) return { ok: true };
 
     const supabase = await createSupabaseServerClient();
-    const inserted = await supabase.from("beer_clears").insert({ player_id: playerId, beers: owed });
-    if (inserted.error) throw inserted.error;
+    const inserted = await supabase
+      .from("beer_clears")
+      .insert({ player_id: playerId, beers: standing.owed, earned_total: standing.earned });
+    if (inserted.error && !isUniqueViolation(inserted.error)) throw inserted.error;
   } catch (err) {
     return { ok: false, error: errorMessage(err) };
   }
@@ -100,12 +108,17 @@ export async function setBeerRate(rate: number): Promise<ActionResult> {
 
   try {
     const supabase = await createSupabaseServerClient();
-    // Upsert (not update) so a missing settings row is created rather than the
-    // change silently affecting zero rows.
+    // Update, not upsert: anon has only SELECT and UPDATE on app_settings, and an
+    // upsert is INSERT ... ON CONFLICT, which needs INSERT. The seed row always exists.
     const updated = await supabase
       .from("app_settings")
-      .upsert({ id: true, beers_per_no_show: rate }, { onConflict: "id" });
+      .update({ beers_per_no_show: rate })
+      .eq("id", true)
+      .select("id");
     if (updated.error) throw updated.error;
+    if (!updated.data || updated.data.length === 0) {
+      return { ok: false, error: "Settings row missing; run supabase/v4.sql." };
+    }
   } catch (err) {
     return { ok: false, error: errorMessage(err) };
   }

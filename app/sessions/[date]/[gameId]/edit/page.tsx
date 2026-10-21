@@ -24,6 +24,7 @@ export default async function EditGamePage({ params }: { params: Promise<{ date:
     scoreB: game.score_b,
     playedOn: game.played_on,
     gameTarget: game.game_target,
+    satOut: game.sat_out,
   };
 
   return (

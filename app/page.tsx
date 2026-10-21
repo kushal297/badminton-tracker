@@ -2,10 +2,14 @@ import Link from "next/link";
 import { getAllData } from "@/lib/data";
 import { computeAll } from "@/lib/stats/computeAll";
 import { MatchCard } from "@/components/MatchCard";
-import { EmptyState, btnPrimary } from "@/components/ui";
+import { EmptyState, btnGhost, btnPrimary } from "@/components/ui";
+import { recentDays } from "@/lib/recentDays";
 import { formatDateLong, formatRating, formatStreak } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+// The home feed shows only the newest days; /sessions lists the rest.
+const FEED_DAYS = 5;
 
 export default async function Home() {
   const { players, games, sessions } = await getAllData();
@@ -25,8 +29,7 @@ export default async function Home() {
     if (bucket) bucket.push(g);
     else byDay.set(g.played_on, [g]);
   }
-  const days = [...byDay.entries()]
-    .sort((a, b) => b[0].localeCompare(a[0]))
+  const days = recentDays(byDay, FEED_DAYS)
     .map(([date, dayGames]) => ({
       date,
       games: [...dayGames].sort(
@@ -59,11 +62,16 @@ export default async function Home() {
         <div className="space-y-6">
           {days.map(({ date, games: dayGames }) => (
             <section key={date} className="space-y-2.5">
-              <h2 className="flex items-baseline gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-muted">
-                <span>{formatDateLong(date)}</span>
-                <span className="tnum font-medium normal-case tracking-normal text-muted/80">
-                  · {dayGames.length} game{dayGames.length === 1 ? "" : "s"}
-                </span>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted">
+                <Link
+                  href={`/sessions/${date}`}
+                  className="flex min-h-11 items-baseline gap-2 rounded transition hover:text-court focus-visible:text-court focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-court"
+                >
+                  <span>{formatDateLong(date)}</span>
+                  <span className="tnum font-medium normal-case tracking-normal text-muted/80">
+                    · {dayGames.length} game{dayGames.length === 1 ? "" : "s"}
+                  </span>
+                </Link>
               </h2>
               <div className="space-y-2">
                 {dayGames.map((g) => (
@@ -77,6 +85,9 @@ export default async function Home() {
               </div>
             </section>
           ))}
+          <Link href="/sessions" className={`${btnGhost} w-full`}>
+            All sessions
+          </Link>
         </div>
       ) : (
         <EmptyState
