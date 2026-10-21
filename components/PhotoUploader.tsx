@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { needsJpegFallback, pickEncoding } from "@/lib/imageEncoding";
 import { savePlayerPhotoUrl } from "@/app/actions/players";
 import type { MiniPlayer } from "@/lib/players";
 
@@ -11,10 +11,11 @@ const BUCKET = "player-photos";
 const TARGET = 256; // longest edge, in px
 
 /**
- * Downscale an image File to a ~256px square webp Blob on a canvas (centre-cropped
- * so avatars stay round). Throws if the file can't be decoded or encoded.
+ * Downscale an image File to a ~256px square Blob on a canvas (centre-cropped so
+ * avatars stay round). Encodes WebP, or JPEG when the browser can't encode WebP.
+ * Throws if the file can't be decoded or encoded.
  */
-async function downscaleToWebp(file: File): Promise<Blob> {
+async function downscaleImage(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file).catch(() => {
     throw new Error("That file isn't a readable image.");
   });
@@ -28,7 +29,11 @@ async function downscaleToWebp(file: File): Promise<Blob> {
   if (!ctx) throw new Error("Couldn't prepare the image.");
   ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, TARGET, TARGET);
   bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.85));
+  let blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.85));
+  // Safari can't encode WebP from a canvas and silently returns a PNG instead.
+  if (needsJpegFallback(blob)) {
+    blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  }
   if (!blob) throw new Error("Couldn't process that image.");
   return blob;
 }
@@ -38,8 +43,15 @@ async function downscaleToWebp(file: File): Promise<Blob> {
  * A small camera badge signals it's editable. Fixed width — no "Add/Change photo"
  * text button, so it never reflows the surrounding row.
  */
-export function PhotoUploader({ player, size = 48 }: { player: MiniPlayer; size?: number }) {
-  const router = useRouter();
+export function PhotoUploader({
+  player,
+  size = 48,
+  onError,
+}: {
+  player: MiniPlayer;
+  size?: number;
+  onError?: (message: string | null) => void;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,14 +59,16 @@ export function PhotoUploader({ player, size = 48 }: { player: MiniPlayer; size?
 
   async function handleFile(file: File) {
     setError(null);
+    onError?.(null);
     setBusy(true);
     try {
-      const blob = await downscaleToWebp(file);
+      const blob = await downscaleImage(file);
       const supabase = createSupabaseBrowserClient();
-      const path = `${player.id}.webp`;
+      const { ext, contentType } = pickEncoding(blob.type);
+      const path = `${player.id}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from(BUCKET)
-        .upload(path, blob, { upsert: true, contentType: "image/webp" });
+        .upload(path, blob, { upsert: true, contentType });
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -63,9 +77,10 @@ export function PhotoUploader({ player, size = 48 }: { player: MiniPlayer; size?
       if (!res.ok) throw new Error(res.error);
 
       setPreview(url);
-      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed. Try again.");
+      const message = err instanceof Error ? err.message : "Upload failed. Try again.";
+      setError(message);
+      onError?.(message);
     } finally {
       setBusy(false);
     }
