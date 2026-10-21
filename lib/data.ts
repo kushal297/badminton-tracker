@@ -1,6 +1,7 @@
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/fetchAll";
+import { assignPlayerColors } from "@/lib/players";
 import type { Absence, BeerClear, Game, GameWithDate, Player, Session } from "@/lib/types";
 
 /** Default beers owed per no-show when app_settings is missing or unreadable. */
@@ -72,5 +73,9 @@ export async function getAllData(): Promise<AllData> {
     played_on: playedOnBySession.get(g.session_id) ?? g.played_at.slice(0, 10),
   }));
 
-  return { players, sessions, games, absences, beerClears, beersPerNoShow };
+  // Fill unsaved colours once, here, so avatars, chips and charts all agree.
+  const assigned = assignPlayerColors(players);
+  const coloredPlayers = players.map((p) => ({ ...p, color: assigned.get(p.id) ?? p.color }));
+
+  return { players: coloredPlayers, sessions, games, absences, beerClears, beersPerNoShow };
 }

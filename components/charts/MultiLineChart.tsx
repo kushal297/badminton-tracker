@@ -1,6 +1,6 @@
 "use client";
 
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export type Series = { key: string; name: string; color: string };
 
@@ -20,7 +20,7 @@ export function MultiLineChart({
     return <p className="text-sm text-muted">Play a couple of sessions to see a rating trend.</p>;
   }
   return (
-    <div className="h-44 w-full">
+    <div className="h-56 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#DCE5DF" vertical={false} />
@@ -43,6 +43,7 @@ export function MultiLineChart({
             labelStyle={{ color: "#5C6B63" }}
             formatter={(value, name) => [Math.round(Number(value)), name]}
           />
+          <Legend wrapperStyle={{ fontSize: 12 }} iconType="plainline" />
           {series.map((s) => (
             <Line
               key={s.key}
