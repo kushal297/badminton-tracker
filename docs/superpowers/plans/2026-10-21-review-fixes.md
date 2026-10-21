@@ -63,10 +63,8 @@ Inputs the review implies but no existing test exercises; each gets a test in th
    where (g.played_at at time zone 'Asia/Kolkata')::date <> s.played_on and g.deleted_at is null;
   -- sessions that Task 15's no-future-dates rule would make uneditable
   select count(*) from sessions where played_on > (now() at time zone 'Asia/Kolkata')::date;
-  -- players with two beer clears on one IST day (would block Task 7's constraint)
-  select player_id, (cleared_at at time zone 'Asia/Kolkata')::date as d, count(*)
-    from beer_clears group by 1,2 having count(*) > 1;
   ```
+  (An earlier draft also asked for a "two beer clears on one IST day" query; Task 7 no longer keys on the day, so it is not needed.)
 - [ ] **Step 3: Schema dump.**
   ```bash
   mkdir -p ~/Backups/badminton-tracker/2026-10-21
@@ -237,7 +235,7 @@ Inputs the review implies but no existing test exercises; each gets a test in th
 
 **Interfaces:**
 - `ActionResult = { ok: true; warning?: string } | { ok: false; error: string }`.
-- `v4.sql` appends: `revoke delete on games, sessions, players from anon, authenticated;` (the only hard delete in the app is `absences`, `beers.ts:62`); and a four-step, idempotent `beer_clears` change so existing rows keep their real dates: (1) `add column if not exists cleared_on date`; (2) `update beer_clears set cleared_on = (cleared_at at time zone 'Asia/Kolkata')::date where cleared_on is null`; (3) `alter column cleared_on set not null, alter column cleared_on set default ((now() at time zone 'Asia/Kolkata')::date)`; (4) constraint `beer_clears_one_per_day unique (player_id, cleared_on)` guarded by a `pg_constraint` existence check. Precondition: the Task 0 Step 2 "two clears on one IST day" query returned zero rows. Business rule: one clear per player per day; a second concurrent clear hits 23505 and is treated as success. `BeerClear` in `lib/types.ts:77` gains `cleared_on: string` because `select("*")` now returns it.
+- `v4.sql` appends: `revoke delete on games, sessions, players from anon, authenticated;` (the only hard delete in the app is `absences`, `beers.ts:62`), and the same explicit revoke goes into `schema.sql` and the init migration (a narrower grant does not remove privileges hosted Supabase grants by default). Beer-clear idempotency (revised after review: a per-day key blocked a legitimate second payment after a new same-day no-show): `beer_clears` gains `earned_total int` (nullable; the player's lifetime beers earned at the moment of the clear, null on historical rows) and `constraint beer_clears_one_per_debt unique (player_id, earned_total)` in a guarded DO block. Two concurrent taps compute the same total and collide (23505 is treated as success); a later clear after new debt has a different total and succeeds. No backfill and no pre-flight precondition needed. `BeerClear` in `lib/types.ts` gains `earned_total: number | null`.
 
 - [ ] **Step 1:** Reproduce on the local stack: revoke insert on `game_events` from anon, save a game → success with no audit row. Restore the grant. Keep the note for the PR.
 - [ ] **Step 2:** Check `.error` on all three `game_events` inserts. Because the game write already committed, do not return `ok:false` (the form would stay open and invite a duplicate save): for create and edit still call `revalidateEverything()` and `redirect(`/sessions/${date}?notice=audit`)`; for delete return `{ ok: true, warning: "Deleted, but the audit log failed." }`. The session page reads `searchParams.notice === "audit"` and shows "Saved, but the audit log entry failed. Tell the admin." `deleteGame`: add `.select("id")` to the update; no row → `{ ok: false, error: "That game was already deleted." }` and no event. `updateGame`: add `.is("deleted_at", null)` and return "That game was deleted." when no row returns. `clearBeers`: insert as today; on `isUniqueViolation` return `{ ok: true }`.
@@ -359,6 +357,9 @@ Inputs the review implies but no existing test exercises; each gets a test in th
 ---
 
 ## Follow-ups (not in this plan)
+
+- `clearBeers` still reads the balance and inserts separately. If a new no-show lands between two concurrent Mark Paid taps, both taps compute different earned totals and both insert. Closing it fully needs a serialised clear (a Postgres function or advisory lock). Pre-existing; found in the Task 7 Sol re-check.
+- Unit tests cannot catch a regression inside the server actions themselves (for example hoisting `nextSessionSeq` out of the retried closure); only the extracted helpers are tested.
 
 - PIN brute-force throttling needs shared state (a table or KV); per-instance limits are cosmetic on serverless. File as an issue.
 - Switch the Cloudflare record for `bt` to DNS only before the certificate renews (about 26 days from 2026-10-21).
