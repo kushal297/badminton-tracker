@@ -1,5 +1,6 @@
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/fetchAll";
 import type { Absence, BeerClear, Game, GameWithDate, Player, Session } from "@/lib/types";
 
 /** Default beers owed per no-show when app_settings is missing or unreadable. */
@@ -31,33 +32,42 @@ export async function getAllData(): Promise<AllData> {
 
   const supabase = await createSupabaseServerClient();
 
-  const [playersRes, sessionsRes, gamesRes, absencesRes, beerClearsRes, settingsRes] = await Promise.all([
-    supabase.from("players").select("*").order("created_at", { ascending: true }),
-    supabase.from("sessions").select("*").order("played_on", { ascending: true }),
-    supabase.from("games").select("*").is("deleted_at", null),
-    supabase.from("absences").select("*").order("noshow_on", { ascending: false }),
-    supabase.from("beer_clears").select("*"),
+  // Each table is paged through fetchAllRows so the PostgREST max_rows cap
+  // cannot silently drop rows; every order ends in `id` so pages are stable.
+  const [players, sessions, rawGames, absences, beerClears, settingsRes] = await Promise.all([
+    fetchAllRows<Player>((from, to) =>
+      supabase.from("players").select("*").order("created_at", { ascending: true }).order("id", { ascending: true }).range(from, to),
+    ),
+    fetchAllRows<Session>((from, to) =>
+      supabase.from("sessions").select("*").order("played_on", { ascending: true }).order("id", { ascending: true }).range(from, to),
+    ),
+    fetchAllRows<Game>((from, to) =>
+      supabase
+        .from("games")
+        .select("*")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllRows<Absence>((from, to) =>
+      supabase.from("absences").select("*").order("noshow_on", { ascending: false }).order("id", { ascending: true }).range(from, to),
+    ),
+    fetchAllRows<BeerClear>((from, to) =>
+      supabase.from("beer_clears").select("*").order("cleared_at", { ascending: true }).order("id", { ascending: true }).range(from, to),
+    ),
     supabase.from("app_settings").select("beers_per_no_show").single(),
   ]);
 
-  // Fail loudly — a read error must not silently render empty stats.
-  if (playersRes.error) throw playersRes.error;
-  if (sessionsRes.error) throw sessionsRes.error;
-  if (gamesRes.error) throw gamesRes.error;
-  if (absencesRes.error) throw absencesRes.error;
-  if (beerClearsRes.error) throw beerClearsRes.error;
+  // A failed page read rejects inside fetchAllRows, so a read error never renders empty stats.
   // app_settings is a single-row config: tolerate a missing row (PGRST116 = no
   // rows) by falling back to the default, but still surface any real error.
   if (settingsRes.error && settingsRes.error.code !== "PGRST116") throw settingsRes.error;
 
-  const players = (playersRes.data ?? []) as Player[];
-  const sessions = (sessionsRes.data ?? []) as Session[];
-  const absences = (absencesRes.data ?? []) as Absence[];
-  const beerClears = (beerClearsRes.data ?? []) as BeerClear[];
   const beersPerNoShow = settingsRes.data?.beers_per_no_show ?? DEFAULT_BEERS_PER_NO_SHOW;
 
   const playedOnBySession = new Map(sessions.map((s) => [s.id, s.played_on]));
-  const games: GameWithDate[] = ((gamesRes.data ?? []) as Game[]).map((g) => ({
+  const games: GameWithDate[] = rawGames.map((g) => ({
     ...g,
     played_on: playedOnBySession.get(g.session_id) ?? g.played_at.slice(0, 10),
   }));
