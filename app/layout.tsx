@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
+import { SetupScreen } from "@/components/SetupScreen";
 import { TabBar } from "@/components/TabBar";
 import "./globals.css";
 
@@ -25,6 +26,7 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   return (
     <html
       lang="en"
@@ -39,7 +41,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </div>
         </header>
         <main className="flex-1 overflow-y-auto overscroll-contain">
-          <div className="mx-auto w-full max-w-2xl px-4 pb-6 pt-4 sm:px-6">{children}</div>
+          <div className="mx-auto w-full max-w-2xl px-4 pb-6 pt-4 sm:px-6">{configured ? children : <SetupScreen />}</div>
         </main>
         <TabBar />
       </body>

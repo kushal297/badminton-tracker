@@ -95,5 +95,9 @@ export async function getAllData(): Promise<AllData> {
     played_on: playedOnBySession.get(g.session_id) ?? g.played_at.slice(0, 10),
   }));
 
-  return { players, sessions, games, absences, beerClears, beersPerNoShow };
+  // Fill unsaved colours once, here, so avatars, chips and charts all agree.
+  const assigned = assignPlayerColors(players);
+  const coloredPlayers = players.map((p) => ({ ...p, color: assigned.get(p.id) ?? p.color }));
+
+  return { players: coloredPlayers, sessions, games, absences, beerClears, beersPerNoShow };
 }
