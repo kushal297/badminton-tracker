@@ -6,6 +6,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { btnPrimary } from "@/components/ui";
 import { deleteGame, saveGame, updateGame, type ActionResult } from "@/app/actions/games";
 import type { GameInput } from "@/lib/schemas";
+import { deriveSatOut } from "@/lib/satOut";
 
 type MiniPlayer = { id: string; name: string; color: string | null; photo_url: string | null };
 
@@ -15,6 +16,7 @@ export type EntryInitial = {
   scoreB: number;
   playedOn: string;
   gameTarget: number;
+  satOut: string | null;
 };
 
 const SLOT_TEAM = ["A", "A", "B", "B"] as const;
@@ -45,6 +47,11 @@ export function GameEntryForm({
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
   const assigned = slots.filter((s): s is string => Boolean(s));
   const resting = players.filter((p) => !assigned.includes(p.id));
+  const satOut = deriveSatOut(
+    resting.map((p) => p.id),
+    mode === "edit" ? initial!.satOut : undefined,
+  );
+  const satOutPlayer = satOut ? byId.get(satOut) : undefined;
   const ready = assigned.length === 4 && scoreA !== scoreB;
 
   function toggle(id: string) {
@@ -71,7 +78,7 @@ export function GameEntryForm({
       playedOn,
       teamA: [slots[0]!, slots[1]!],
       teamB: [slots[2]!, slots[3]!],
-      satOut: resting.length === 1 ? resting[0].id : null,
+      satOut,
       scoreA,
       scoreB,
       gameTarget: target,
@@ -198,9 +205,9 @@ export function GameEntryForm({
             );
           })}
         </div>
-        {resting.length === 1 ? (
+        {satOutPlayer ? (
           <p className="mt-2 text-sm text-muted">
-            <span className="font-medium text-ink">{resting[0].name}</span> sits this one out.
+            <span className="font-medium text-ink">{satOutPlayer.name}</span> sits this one out.
           </p>
         ) : null}
       </div>
