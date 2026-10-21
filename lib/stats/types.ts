@@ -87,6 +87,7 @@ export type ComputeOutput = {
   config: StatsConfig;
   players: Player[];
   orderedGames: GameWithDate[]; // canonical order, soft-deletes already excluded
+  sessionsChrono: { id: string; playedOn: string }[]; // sessions in replay order
   perPlayer: Record<string, PlayerStats>;
   leaderboard: LeaderboardRow[];
   ratingHistory: Record<string, RatingPoint[]>;
