@@ -78,8 +78,9 @@ export function computeAll(
   const ordered = [...games]
     .filter((g) => !g.deleted_at)
     .sort((a, b) => {
-      if (a.played_at !== b.played_at) return a.played_at < b.played_at ? -1 : 1;
+      if (a.played_on !== b.played_on) return a.played_on < b.played_on ? -1 : 1;
       if (a.session_seq !== b.session_seq) return a.session_seq - b.session_seq;
+      if (a.played_at !== b.played_at) return a.played_at < b.played_at ? -1 : 1;
       if (a.created_at !== b.created_at) return a.created_at < b.created_at ? -1 : 1;
       return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     });
@@ -98,7 +99,7 @@ export function computeAll(
 
   ordered.forEach((g, index) => {
     // Session boundary: snapshot the session we are leaving (games are contiguous
-    // per session because played_at carries the date).
+    // per session because played_on leads the sort).
     if (currentSession && currentSession.id !== g.session_id) {
       snapshotSession(currentSession);
     }
@@ -341,6 +342,7 @@ export function computeAll(
     config,
     players,
     orderedGames: ordered,
+    sessionsChrono,
     perPlayer,
     leaderboard,
     ratingHistory,
